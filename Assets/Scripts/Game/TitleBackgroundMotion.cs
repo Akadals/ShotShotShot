@@ -2,6 +2,7 @@ using UnityEngine;
 
 public class TitleBackgroundMotion : MonoBehaviour
 {
+    [SerializeField] private Sprite[] m_meteorSprites;
     [SerializeField] private float scrollSpeed = 0.28f;
     [SerializeField] private float meteorInterval = 3.2f;
     [SerializeField] private float meteorSpeed = 0.55f;
@@ -31,7 +32,9 @@ public class TitleBackgroundMotion : MonoBehaviour
             if (second > float.MinValue) tileHeight = Mathf.Abs(highest - second);
         }
 
-        meteorSprites = Resources.LoadAll<Sprite>("kenney_space-shooter-extension/PNG/Sprites/Meteors");
+        meteorSprites = m_meteorSprites != null && m_meteorSprites.Length > 0
+            ? m_meteorSprites
+            : Resources.LoadAll<Sprite>("kenney_space-shooter-extension/PNG/Sprites/Meteors");
         if (mainCamera != null && meteorSprites.Length > 0) CreateMeteorPool();
         nextMeteorTime = Time.time + Random.Range(0.5f, meteorInterval);
     }

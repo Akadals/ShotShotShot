@@ -2,6 +2,7 @@ using UnityEngine;
 
 public class GameBackgroundMotion : MonoBehaviour
 {
+    [SerializeField] private Sprite m_backgroundSprite;
     private static Sprite cachedBackground;
     private static bool backgroundLoadAttempted;
     [SerializeField] private float parallaxStrength = 0.22f;
@@ -19,7 +20,7 @@ public class GameBackgroundMotion : MonoBehaviour
         player = targetPlayer;
         mainCamera = camera;
         cameraCenter = camera.transform.position + Vector3.forward * 10f;
-        Sprite background = LoadBackgroundSprite();
+        Sprite background = m_backgroundSprite != null ? m_backgroundSprite : LoadBackgroundSprite();
         if (background == null) return;
         tileSize = background.bounds.size;
         if (tileSize.x <= 0f || tileSize.y <= 0f) return;

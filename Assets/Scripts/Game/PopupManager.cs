@@ -5,6 +5,8 @@ using UnityEngine.UI;
 
 public class PopupManager : Shared<PopupManager>
 {
+    [SerializeField] private GameObject m_settingsPopupPrefab;
+    [SerializeField] private AudioMixer m_audioMixer;
     private static readonly string[] MixerParameters = { "Master", "BGM", "VFX", "UI" };
     private AudioMixer mixer;
     private GameObject popupRoot;
@@ -14,8 +16,10 @@ public class PopupManager : Shared<PopupManager>
         base.Awake();
         if (Instance != this) return;
 
-        mixer = Resources.Load<AudioMixer>("Mixer");
-        GameObject prefab = Resources.Load<GameObject>("Prefabs/UI/SettingsPopup");
+        mixer = m_audioMixer != null ? m_audioMixer : Resources.Load<AudioMixer>("Mixer");
+        GameObject prefab = m_settingsPopupPrefab != null
+            ? m_settingsPopupPrefab
+            : Resources.Load<GameObject>("Prefabs/UI/SettingsPopup");
         if (prefab == null)
         {
             Debug.LogError("SettingsPopup prefab was not found in Resources/Prefabs/UI.");

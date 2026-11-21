@@ -7,7 +7,15 @@ using UnityEngine.SceneManagement;
 
 public class GameManager : Shared<GameManager>
 {
-    private const int MaxHp = 3;
+    [SerializeField] private int m_maxHealth = 7;
+    [SerializeField] private GameObject m_hudPrefab;
+    [SerializeField] private Sprite m_playerSprite;
+    [SerializeField] private Sprite[] m_enemySprites;
+    [SerializeField] private Sprite m_playerMissileSprite;
+    [SerializeField] private Sprite m_enemyMissileSprite;
+    [SerializeField] private AudioMixer m_audioMixer;
+    [SerializeField] private AudioClip m_fireClip;
+    [SerializeField] private AudioClip m_explosionClip;
     private static readonly WaitForSeconds SpawnDelay = new WaitForSeconds(0.07f);
     private int hp;
     private int score;
@@ -34,25 +42,37 @@ public class GameManager : Shared<GameManager>
     private AudioClip fireClip;
     private AudioClip explosionClip;
     private AudioMixer mixer;
-    private GameObject hudPrefab;
 
     protected override void Awake()
     {
         base.Awake();
         if (Instance != this) return;
         ReadCameraBounds();
-        hudPrefab = Resources.Load<GameObject>("Prefabs/UI/GameHUD");
-        Sprite[] shipSprites = Resources.LoadAll<Sprite>("kenney_space-shooter-extension/PNG/Sprites/Ships");
-        playerSprite = FindSprite(shipSprites, "spaceShips_001");
-        List<Sprite> enemies = new List<Sprite>();
-        foreach (Sprite sprite in shipSprites)
+        if (m_hudPrefab == null) m_hudPrefab = Resources.Load<GameObject>("Prefabs/UI/GameHUD");
+        if (m_playerSprite == null || m_enemySprites == null || m_enemySprites.Length == 0)
         {
-            if (sprite != null && sprite != playerSprite) enemies.Add(sprite);
+            Sprite[] shipSprites = Resources.LoadAll<Sprite>("kenney_space-shooter-extension/PNG/Sprites/Ships");
+            if (m_playerSprite == null) m_playerSprite = FindSprite(shipSprites, "spaceShips_001");
+            if (m_enemySprites == null || m_enemySprites.Length == 0)
+            {
+                List<Sprite> enemies = new List<Sprite>();
+                foreach (Sprite sprite in shipSprites)
+                {
+                    if (sprite != null && sprite != m_playerSprite) enemies.Add(sprite);
+                }
+                m_enemySprites = enemies.Count > 0 ? enemies.ToArray() : shipSprites;
+            }
         }
-        enemySprites = enemies.Count > 0 ? enemies.ToArray() : shipSprites;
-        Sprite[] missiles = Resources.LoadAll<Sprite>("kenney_space-shooter-extension/PNG/Sprites/Missiles");
-        playerMissileSprite = FindSprite(missiles, "spaceMissiles_001");
-        enemyMissileSprite = FindSprite(missiles, "spaceMissiles_003");
+        if (m_playerMissileSprite == null || m_enemyMissileSprite == null)
+        {
+            Sprite[] missiles = Resources.LoadAll<Sprite>("kenney_space-shooter-extension/PNG/Sprites/Missiles");
+            if (m_playerMissileSprite == null) m_playerMissileSprite = FindSprite(missiles, "spaceMissiles_001");
+            if (m_enemyMissileSprite == null) m_enemyMissileSprite = FindSprite(missiles, "spaceMissiles_003");
+        }
+        playerSprite = m_playerSprite;
+        enemySprites = m_enemySprites;
+        playerMissileSprite = m_playerMissileSprite;
+        enemyMissileSprite = m_enemyMissileSprite;
         SetupAudio();
     }
 
@@ -70,7 +90,7 @@ public class GameManager : Shared<GameManager>
         if (isPlaying) return;
         Time.timeScale = 1f;
         ReadCameraBounds();
-        hp = MaxHp;
+        hp = m_maxHealth;
         score = 0;
         wave = 0;
         elapsed = 0f;
@@ -162,13 +182,13 @@ public class GameManager : Shared<GameManager>
 
     private void CreateHud()
     {
-        if (hudPrefab == null)
+        if (m_hudPrefab == null)
         {
             Debug.LogError("GameHUD prefab was not found in Resources/Prefabs/UI.");
             return;
         }
 
-        GameObject hudObject = Instantiate(hudPrefab);
+        GameObject hudObject = Instantiate(m_hudPrefab);
         hud = hudObject.GetComponent<GameHud>();
         if (hud == null)
         {
@@ -181,7 +201,7 @@ public class GameManager : Shared<GameManager>
     private void UpdateHud()
     {
         displayedElapsedSecond = Mathf.FloorToInt(elapsed);
-        if (hud != null) hud.SetStats(score, wave, elapsed, hp, MaxHp);
+        if (hud != null) hud.SetStats(score, wave, elapsed, hp, m_maxHealth);
     }
 
     public void FirePlayerShot(Vector3 position, Vector2 direction)
@@ -328,14 +348,14 @@ public class GameManager : Shared<GameManager>
         audioSource = gameObject.AddComponent<AudioSource>();
         audioSource.playOnAwake = false;
         audioSource.spatialBlend = 0f;
-        mixer = Resources.Load<AudioMixer>("Mixer");
+        mixer = m_audioMixer != null ? m_audioMixer : Resources.Load<AudioMixer>("Mixer");
+        fireClip = m_fireClip != null ? m_fireClip : Resources.Load<AudioClip>("kenney_sci-fi-sounds/Audio/laserRetro_000");
+        explosionClip = m_explosionClip != null ? m_explosionClip : Resources.Load<AudioClip>("kenney_sci-fi-sounds/Audio/explosionCrunch_000");
         if (mixer != null)
         {
             AudioMixerGroup[] groups = mixer.FindMatchingGroups("VFX");
             if (groups.Length > 0) audioSource.outputAudioMixerGroup = groups[0];
         }
-        fireClip = Resources.Load<AudioClip>("kenney_sci-fi-sounds/Audio/laserRetro_000");
-        explosionClip = Resources.Load<AudioClip>("kenney_sci-fi-sounds/Audio/explosionCrunch_000");
     }
 
     private void PlaySound(AudioClip clip, float volume)

@@ -6,6 +6,12 @@ using UnityEngine.Events;
 
 public class TitleSceneController : MonoBehaviour
 {
+    [SerializeField] private IButton m_startButton;
+    [SerializeField] private IButton m_optionButton;
+    [SerializeField] private IButton m_quitButton;
+    [SerializeField] private AudioClip m_clickClip;
+    [SerializeField] private AudioMixer m_audioMixer;
+    [SerializeField] private bool m_useInspectorButtonEvents;
     private AudioSource audioSource;
     private AudioClip clickClip;
     private AudioMixer mixer;
@@ -15,26 +21,33 @@ public class TitleSceneController : MonoBehaviour
         audioSource = gameObject.AddComponent<AudioSource>();
         audioSource.playOnAwake = false;
         audioSource.spatialBlend = 0f;
-        mixer = Resources.Load<AudioMixer>("Mixer");
+        mixer = m_audioMixer != null ? m_audioMixer : Resources.Load<AudioMixer>("Mixer");
         if (mixer != null)
         {
             AudioMixerGroup[] groups = mixer.FindMatchingGroups("UI");
             if (groups.Length > 0) audioSource.outputAudioMixerGroup = groups[0];
         }
-        clickClip = Resources.Load<AudioClip>("kenney_interface-sounds/Audio/click_001");
-        Bind("Start", StartGame);
-        Bind("Option", OpenSettings);
-        Bind("Quit", QuitGame);
+        clickClip = m_clickClip != null ? m_clickClip : Resources.Load<AudioClip>("kenney_interface-sounds/Audio/click_001");
+        if (!m_useInspectorButtonEvents)
+        {
+            Bind(m_startButton != null ? m_startButton : FindButton("Start"), StartGame);
+            Bind(m_optionButton != null ? m_optionButton : FindButton("Option"), OpenSettings);
+            Bind(m_quitButton != null ? m_quitButton : FindButton("Quit"), QuitGame);
+        }
     }
 
-    private void Bind(string objectName, Action action)
+    private IButton FindButton(string _objectName)
     {
-        GameObject target = GameObject.Find(objectName);
-        if (target == null) return;
-        IButton button = target.GetComponent<IButton>();
-        if (button == null) return;
-        if (button.Events == null) button.Events = new UnityEvent();
-        button.Events.AddListener(() => StartCoroutine(ClickFeedback(target.transform, action)));
+        GameObject target = GameObject.Find(_objectName);
+        return target != null ? target.GetComponent<IButton>() : null;
+    }
+
+    private void Bind(IButton _button, Action _action)
+    {
+        if (_button == null) return;
+        Transform target = _button.transform;
+        if (_button.Events == null) _button.Events = new UnityEvent();
+        _button.Events.AddListener(() => StartCoroutine(ClickFeedback(target, _action)));
     }
 
     private IEnumerator ClickFeedback(Transform target, Action action)
@@ -48,18 +61,18 @@ public class TitleSceneController : MonoBehaviour
         action?.Invoke();
     }
 
-    private void StartGame()
+    public void StartGame()
     {
         PopupManager.Instance?.Close();
         SceneTransition.Instance?.LoadScene("sGame");
     }
 
-    private void OpenSettings()
+    public void OpenSettings()
     {
         PopupManager.Instance?.OpenSettings();
     }
 
-    private void QuitGame()
+    public void QuitGame()
     {
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
