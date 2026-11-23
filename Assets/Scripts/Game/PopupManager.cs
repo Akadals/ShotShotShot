@@ -1,72 +1,55 @@
-using TMPro;
+using System;
+using System.Collections;
 using UnityEngine;
-using UnityEngine.Audio;
-using UnityEngine.UI;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
-public class PopupManager : Shared<PopupManager>
+public class PopupManager : Singleton<PopupManager>
 {
-    [SerializeField] private GameObject m_settingsPopupPrefab;
-    [SerializeField] private AudioMixer m_audioMixer;
-    private static readonly string[] MixerParameters = { "Master", "BGM", "VFX", "UI" };
-    private AudioMixer mixer;
-    private GameObject popupRoot;
+    private AsyncOperationHandle<GameObject> m_popupHandle;
+    private SettingsPopup m_settingsPopup;
 
     protected override void Awake()
     {
         base.Awake();
-        if (Instance != this) return;
-
-        mixer = m_audioMixer != null ? m_audioMixer : Resources.Load<AudioMixer>("Mixer");
-        GameObject prefab = m_settingsPopupPrefab != null
-            ? m_settingsPopupPrefab
-            : Resources.Load<GameObject>("Prefabs/UI/SettingsPopup");
-        if (prefab == null)
-        {
-            Debug.LogError("SettingsPopup prefab was not found in Resources/Prefabs/UI.");
-            return;
-        }
-
-        GameObject popupCanvas = Instantiate(prefab, transform);
-        popupRoot = popupCanvas.transform.GetChild(0).gameObject;
-        popupRoot.SetActive(false);
-
-        Transform panel = popupRoot.transform.Find("SettingsPanel");
-        panel.GetComponentInChildren<Button>(true).onClick.AddListener(Close);
-        for (int i = 0; i < MixerParameters.Length; i++)
-        {
-            string parameter = MixerParameters[i];
-            Slider slider = panel.Find(parameter + "Slider").GetComponent<Slider>();
-            TextMeshProUGUI valueText = panel.Find(parameter + "Value").GetComponent<TextMeshProUGUI>();
-            SetupSlider(slider, valueText, parameter);
-        }
+        if (Instance == this) StartCoroutine(LoadSettingsPopup());
     }
 
-    public void OpenSettings()
+    public bool TryOpenSettings(Action _onResume = null, Action _onTitle = null)
     {
-        if (popupRoot != null) popupRoot.SetActive(true);
+        if (m_settingsPopup == null) return false;
+        m_settingsPopup.Show(_onResume, _onTitle);
+        return true;
     }
 
     public void Close()
     {
-        if (popupRoot != null) popupRoot.SetActive(false);
+        if (m_settingsPopup != null) m_settingsPopup.Close();
     }
 
-    private void SetupSlider(Slider slider, TextMeshProUGUI valueText, string parameter)
+    private IEnumerator LoadSettingsPopup()
     {
-        string key = "Audio_" + parameter;
-        float value = PlayerPrefs.GetFloat(key, 1f);
-        if (!PlayerPrefs.HasKey(key) && mixer != null && mixer.GetFloat(parameter, out float decibels))
-            value = decibels <= -79f ? 0f : Mathf.Pow(10f, decibels / 20f);
+        m_popupHandle = Addressables.LoadAssetAsync<GameObject>("SettingsPopup");
+        yield return m_popupHandle;
+        if (m_popupHandle.Status != AsyncOperationStatus.Succeeded)
+        {
+            Debug.LogError("SettingsPopup address was not found in Addressables.");
+            yield break;
+        }
 
-        slider.SetValueWithoutNotify(Mathf.Clamp01(value));
-        valueText.SetText("{0:0}%", Mathf.RoundToInt(slider.value * 100f));
-        slider.onValueChanged.AddListener(volume => SetVolume(parameter, key, volume, valueText));
+        GameObject popup = Instantiate(m_popupHandle.Result, transform);
+        m_settingsPopup = popup.GetComponent<SettingsPopup>();
+        if (m_settingsPopup == null)
+        {
+            Destroy(popup);
+            Debug.LogError("SettingsPopup prefab is missing its SettingsPopup component.");
+        }
     }
 
-    private void SetVolume(string parameter, string key, float value, TextMeshProUGUI valueText)
+    protected override void OnDestroy()
     {
-        valueText.SetText("{0:0}%", Mathf.RoundToInt(value * 100f));
-        if (mixer != null) mixer.SetFloat(parameter, value <= 0.001f ? -80f : Mathf.Lerp(-40f, 0f, value));
-        PlayerPrefs.SetFloat(key, value);
+        bool isOwner = Instance == this;
+        base.OnDestroy();
+        if (isOwner && m_popupHandle.IsValid()) Addressables.Release(m_popupHandle);
     }
 }

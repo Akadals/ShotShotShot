@@ -1,71 +1,64 @@
+using System.Collections;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.InputSystem.UI;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.SceneManagement;
 
-public static class GameBootstrap
+public class GameBootstrap : MonoBehaviour
 {
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    private static void Initialize()
+    private AsyncOperationHandle m_initializationHandle;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void CreateBootstrap()
     {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-        SceneManager.sceneLoaded += OnSceneLoaded;
-        OnSceneLoaded(SceneManager.GetActiveScene(), LoadSceneMode.Single);
+        if (FindFirstObjectByType<GameBootstrap>() != null) return;
+        new GameObject("GameBootstrap").AddComponent<GameBootstrap>();
     }
 
-    private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    private void Awake()
     {
-        if (scene.name == "sTitle")
-        {
-            SceneTransition.EnsureInstance();
-            EnsurePopupManager();
-            EnsureEventSystem();
-            GameObject background = GameObject.Find("Background");
-            if (background != null && background.GetComponent<TitleBackgroundMotion>() == null)
-                background.AddComponent<TitleBackgroundMotion>();
-            GameObject buttons = GameObject.Find("Buttons");
-            if (buttons != null && buttons.GetComponent<TitleSceneController>() == null)
-                buttons.AddComponent<TitleSceneController>();
-        }
-        else if (scene.name == "sGame")
-        {
-            EnsureCamera();
-            EnsureEventSystem();
-            if (GameManager.Instance != null) return;
-            GameObject managerObject = new GameObject("GlobalGameManager");
-            GameManager manager = managerObject.AddComponent<GameManager>();
-            manager.StartGame();
-        }
+        DontDestroyOnLoad(gameObject);
+        StartCoroutine(Initialize());
     }
 
-    private static void EnsurePopupManager()
+    private IEnumerator Initialize()
     {
-        if (PopupManager.Instance != null) return;
-        GameObject managerObject = new GameObject("GlobalPopupManager");
-        managerObject.AddComponent<PopupManager>();
+        m_initializationHandle = Addressables.InitializeAsync();
+        yield return m_initializationHandle;
+        CreateGlobalManagers();
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+        UpdateSceneMusic(UnityEngine.SceneManagement.SceneManager.GetActiveScene());
     }
 
-    private static void EnsureCamera()
+    private void OnSceneLoaded(Scene _scene, LoadSceneMode _mode)
     {
-        Camera camera = Camera.main;
-        if (camera == null)
-        {
-            GameObject cameraObject = new GameObject("Main Camera");
-            cameraObject.tag = "MainCamera";
-            cameraObject.transform.position = new Vector3(0f, 0f, -10f);
-            camera = cameraObject.AddComponent<Camera>();
-            cameraObject.AddComponent<AudioListener>();
-        }
-        camera.orthographic = true;
-        camera.orthographicSize = 5f;
-        camera.backgroundColor = new Color(0.015f, 0.025f, 0.08f);
+        if (_mode == LoadSceneMode.Single) UpdateSceneMusic(_scene);
     }
 
-    private static void EnsureEventSystem()
+    private static void UpdateSceneMusic(Scene _scene)
     {
-        if (Object.FindFirstObjectByType<EventSystem>() != null) return;
-        GameObject eventSystem = new GameObject("EventSystem");
-        eventSystem.AddComponent<EventSystem>();
-        eventSystem.AddComponent<InputSystemUIInputModule>();
+        if (_scene.name == "sTitle")
+            AudioManager.Instance.PlayMusic("TitleMusic");
+        else
+            AudioManager.Instance.StopMusic();
+    }
+
+    private void CreateGlobalManagers()
+    {
+        CreateManager<AudioManager>("AudioManager");
+        CreateManager<SceneManager>("SceneManager");
+        CreateManager<PopupManager>("PopupManager");
+    }
+
+    private static void CreateManager<T>(string _name) where T : MonoBehaviour
+    {
+        if (FindFirstObjectByType<T>() == null)
+            new GameObject(_name).AddComponent<T>();
+    }
+
+    private void OnDestroy()
+    {
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+        if (m_initializationHandle.IsValid()) Addressables.Release(m_initializationHandle);
     }
 }

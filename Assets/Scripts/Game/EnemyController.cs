@@ -2,84 +2,80 @@ using UnityEngine;
 
 public class EnemyController : MonoBehaviour
 {
-    private GameObjectPool pool;
-    private GameManager gameManager;
-    private PlayerController player;
-    private Rigidbody2D body;
-    private SpriteRenderer spriteRenderer;
-    private int hitPoints;
-    private float speed;
-    private float fireTimer;
-    private float halfWidth;
-    private float halfHeight;
-    private bool isActive;
+    private GameObjectPool m_pool;
+    private GameManager m_gameManager;
+    private PlayerController m_player;
+    private Rigidbody2D m_body;
+    private SpriteRenderer m_spriteRenderer;
+    private int m_hitPoints;
+    private float m_speed;
+    private float m_attackInterval;
+    private float m_fireTimer;
+    private bool m_isActive;
 
-    public void Initialize(GameObjectPool ownerPool, Sprite sprite, int hp, float moveSpeed, PlayerController target, float width, float height)
+    public void Initialize(GameObjectPool _ownerPool, EnemyShipData _ship, int _hitPoints, float _speedBonus,
+        PlayerController _target, GameManager _gameManager)
     {
-        pool = ownerPool;
-        gameManager = GameManager.Instance;
-        player = target;
-        hitPoints = hp;
-        speed = moveSpeed;
-        halfWidth = width;
-        halfHeight = height;
-        fireTimer = Random.Range(1.05f, 1.75f);
+        m_pool = _ownerPool;
+        m_gameManager = _gameManager;
+        m_player = _target;
+        m_hitPoints = _hitPoints;
+        m_speed = _ship.MoveSpeed + _speedBonus;
+        m_attackInterval = _ship.AttackInterval;
+        m_fireTimer = m_attackInterval * Random.Range(0.65f, 1f);
 
-        if (body == null) body = GetComponent<Rigidbody2D>();
-        if (spriteRenderer == null) spriteRenderer = GetComponent<SpriteRenderer>();
-        if (sprite != null) spriteRenderer.sprite = sprite;
-        spriteRenderer.color = Color.white;
-        isActive = true;
+        if (m_body == null) m_body = GetComponent<Rigidbody2D>();
+        if (m_spriteRenderer == null) m_spriteRenderer = GetComponent<SpriteRenderer>();
+        m_spriteRenderer.sprite = _ship.Sprite;
+        m_spriteRenderer.color = Color.white;
+        m_isActive = true;
     }
 
     private void FixedUpdate()
     {
-        if (!isActive || player == null) return;
+        if (!m_isActive || !m_gameManager.IsPlaying) return;
 
-        Vector2 position = body.position;
-        Vector2 toPlayer = (Vector2)player.transform.position - position;
+        Vector2 position = m_body.position;
+        Vector2 toPlayer = (Vector2)m_player.transform.position - position;
         if (toPlayer.sqrMagnitude > 0.0001f)
         {
             Vector2 direction = toPlayer.normalized;
-            body.MovePosition(position + direction * (speed * Time.fixedDeltaTime));
+            m_body.MovePosition(position + direction * (m_speed * Time.fixedDeltaTime));
             float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f;
-            body.MoveRotation(Mathf.MoveTowardsAngle(body.rotation, angle, 220f * Time.fixedDeltaTime));
+            m_body.MoveRotation(Mathf.MoveTowardsAngle(m_body.rotation, angle, 220f * Time.fixedDeltaTime));
         }
 
-        fireTimer -= Time.fixedDeltaTime;
-        if (fireTimer <= 0f)
+        m_fireTimer -= Time.fixedDeltaTime;
+        if (m_fireTimer <= 0f)
         {
-            fireTimer = Random.Range(1.8f, 2.9f);
-            gameManager?.FireEnemyShot(position - (Vector2)transform.up * 0.4f, player.transform.position);
+            m_fireTimer = m_attackInterval;
+            m_gameManager.FireEnemyShot(position - (Vector2)transform.up * 0.4f, m_player.transform.position);
         }
-
-        if (Mathf.Abs(position.x) > halfWidth + 3f || Mathf.Abs(position.y) > halfHeight + 3f)
-            Release();
     }
 
-    public void TakeHit(int damage)
+    public void TakeHit(int _damage)
     {
-        if (!isActive) return;
-        hitPoints -= damage;
-        if (hitPoints <= 0)
+        if (!m_isActive) return;
+        m_hitPoints -= _damage;
+        if (m_hitPoints <= 0)
         {
-            isActive = false;
-            gameManager?.EnemyDestroyed();
-            pool?.Release(gameObject);
+            m_isActive = false;
+            m_gameManager.EnemyDestroyed();
+            m_pool.Release(gameObject);
         }
-        else if (spriteRenderer != null) spriteRenderer.color = new Color(1f, 0.55f, 0.45f);
+        else if (m_spriteRenderer != null) m_spriteRenderer.color = new Color(1f, 0.55f, 0.45f);
     }
 
-    private void OnTriggerEnter2D(Collider2D other)
+    private void OnTriggerEnter2D(Collider2D _other)
     {
-        if (!isActive || !other.TryGetComponent<PlayerController>(out _)) return;
-        gameManager?.DamagePlayer();
+        if (!m_isActive || !_other.TryGetComponent<PlayerController>(out _)) return;
+        m_gameManager.DamagePlayer();
         Release();
     }
 
     private void Release()
     {
-        isActive = false;
-        pool?.Release(gameObject);
+        m_isActive = false;
+        m_pool.Release(gameObject);
     }
 }

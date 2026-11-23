@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c118a6fff2971345ad6638dc3c70a77, type: 3}
+  m_Name: Corsair
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyShipData
+  m_sprite: {fileID: 7270805162981385844, guid: 8b265f5f15b32bc459d3442b6d89fe8c, type: 3}
+  m_moveSpeed: 1.35
+  m_attackInterval: 2.1

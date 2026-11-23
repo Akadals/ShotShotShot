@@ -3,31 +3,34 @@ using UnityEngine.Events;
 using UnityEngine.EventSystems;
 
 [RequireComponent(typeof(RectTransform))]
-public class IButton : MonoBehaviour,
-    IPointerEnterHandler,
-    IPointerExitHandler,
-    IPointerClickHandler
+public class IButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
 {
-    private RectTransform rect = null;
-    private Vector2 selectorPosition = Vector2.zero;
-    private bool isHighlighted = false;
-    public Vector2 SelectorPosition => selectorPosition;
-    public bool IsHighlighted => isHighlighted;
-    public UnityEvent Events;
+    [SerializeField] private UnityEvent m_onClick = new UnityEvent();
+    private RectTransform m_rect;
+    private bool m_isHighlighted;
+
+    public Vector2 SelectorPosition => m_rect.anchoredPosition;
+    public bool IsHighlighted => m_isHighlighted;
+    public UnityEvent OnClick => m_onClick;
+
     private void Awake()
     {
-        rect = GetComponent<RectTransform>();
-        if (rect != null) selectorPosition = rect.anchoredPosition;
+        m_rect = GetComponent<RectTransform>();
     }
 
-    public void OnPointerEnter(PointerEventData eventData)
-        => isHighlighted = true;
-
-    public void OnPointerExit(PointerEventData eventData)
-        => isHighlighted = false;
-
-    public void OnPointerClick(PointerEventData eventData)
+    public void OnPointerEnter(PointerEventData _eventData)
     {
-        Events?.Invoke();
+        m_isHighlighted = true;
+    }
+
+    public void OnPointerExit(PointerEventData _eventData)
+    {
+        m_isHighlighted = false;
+    }
+
+    public void OnPointerClick(PointerEventData _eventData)
+    {
+        AudioManager.Instance?.PlayUi("ButtonClick");
+        m_onClick?.Invoke();
     }
 }

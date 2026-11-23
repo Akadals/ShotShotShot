@@ -1,126 +1,156 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Audio;
+using UnityEngine.AddressableAssets;
 using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
-public class GameManager : Shared<GameManager>
+public class GameManager : MonoBehaviour
 {
-    [SerializeField] private int m_maxHealth = 7;
-    [SerializeField] private GameObject m_hudPrefab;
-    [SerializeField] private Sprite m_playerSprite;
-    [SerializeField] private Sprite[] m_enemySprites;
-    [SerializeField] private Sprite m_playerMissileSprite;
-    [SerializeField] private Sprite m_enemyMissileSprite;
-    [SerializeField] private AudioMixer m_audioMixer;
-    [SerializeField] private AudioClip m_fireClip;
-    [SerializeField] private AudioClip m_explosionClip;
-    private static readonly WaitForSeconds SpawnDelay = new WaitForSeconds(0.07f);
-    private int hp;
-    private int score;
-    private int wave;
-    private float elapsed;
-    private int displayedElapsedSecond = -1;
-    private bool isPlaying;
-    private bool isSpawning;
-    private float nextWaveTime;
-    private float cameraHalfWidth;
-    private float cameraHalfHeight;
-    private Camera mainCamera;
-    private PlayerController player;
-    private GameHud hud;
-    private GameBackgroundMotion background;
-    private GameObjectPool enemyPool;
-    private GameObjectPool playerProjectilePool;
-    private GameObjectPool enemyProjectilePool;
-    private Sprite playerSprite;
-    private Sprite[] enemySprites;
-    private Sprite playerMissileSprite;
-    private Sprite enemyMissileSprite;
-    private AudioSource audioSource;
-    private AudioClip fireClip;
-    private AudioClip explosionClip;
-    private AudioMixer mixer;
+    [SerializeField] private PlayerController m_player;
 
-    protected override void Awake()
+    private readonly List<AsyncOperationHandle> m_assetHandles = new List<AsyncOperationHandle>();
+    private int m_score;
+    private int m_wave;
+    private float m_elapsed;
+    private int m_displayedElapsedSecond = -1;
+    private bool m_isPlaying;
+    private bool m_isPaused;
+    private float m_nextWaveTime;
+    private float m_cameraHalfWidth;
+    private float m_cameraHalfHeight;
+    private Camera m_mainCamera;
+    private GameHud m_hud;
+    private GameBackgroundMotion m_background;
+    private GameObjectPool m_enemyPool;
+    private GameObjectPool m_playerProjectilePool;
+    private GameObjectPool m_enemyProjectilePool;
+    private GameObject m_hudPrefab;
+    private Sprite m_playerSprite;
+    private Sprite m_playerMissileSprite;
+    private Sprite m_enemyMissileSprite;
+    private Sprite m_backgroundSprite;
+    private readonly List<EnemyShipData> m_enemyShips = new();
+
+    public bool IsPlaying => m_isPlaying && !m_isPaused;
+
+    private IEnumerator Start()
     {
-        base.Awake();
-        if (Instance != this) return;
+        if (m_player == null)
+        {
+            Debug.LogError("GameManager needs a PlayerController assigned in the Inspector.", this);
+            yield break;
+        }
+
+        m_player.HealthChanged += OnHealthChanged;
+        m_player.HealthDepleted += EndGame;
+        yield return LoadGameAssets();
+        StartGame();
+    }
+
+    private IEnumerator LoadGameAssets()
+    {
+        AsyncOperationHandle<GameObject> hudHandle = Addressables.LoadAssetAsync<GameObject>("GameHUD");
+        m_assetHandles.Add(hudHandle);
+        yield return hudHandle;
+        if (hudHandle.Status != AsyncOperationStatus.Succeeded)
+        {
+            Debug.LogError("GameHUD address was not found in Addressables.");
+            yield break;
+        }
+        m_hudPrefab = hudHandle.Result;
+
+        AsyncOperationHandle<Sprite> playerHandle = Addressables.LoadAssetAsync<Sprite>("PlayerShip");
+        m_assetHandles.Add(playerHandle);
+        yield return playerHandle;
+        m_playerSprite = playerHandle.Status == AsyncOperationStatus.Succeeded ? playerHandle.Result : null;
+
+        AsyncOperationHandle<Sprite> playerMissileHandle = Addressables.LoadAssetAsync<Sprite>("PlayerMissile");
+        m_assetHandles.Add(playerMissileHandle);
+        yield return playerMissileHandle;
+        m_playerMissileSprite = playerMissileHandle.Status == AsyncOperationStatus.Succeeded ? playerMissileHandle.Result : null;
+
+        AsyncOperationHandle<Sprite> enemyMissileHandle = Addressables.LoadAssetAsync<Sprite>("EnemyMissile");
+        m_assetHandles.Add(enemyMissileHandle);
+        yield return enemyMissileHandle;
+        m_enemyMissileSprite = enemyMissileHandle.Status == AsyncOperationStatus.Succeeded ? enemyMissileHandle.Result : null;
+
+        AsyncOperationHandle<Sprite> backgroundHandle = Addressables.LoadAssetAsync<Sprite>("Background");
+        m_assetHandles.Add(backgroundHandle);
+        yield return backgroundHandle;
+        m_backgroundSprite = backgroundHandle.Status == AsyncOperationStatus.Succeeded ? backgroundHandle.Result : null;
+
+        AsyncOperationHandle<IList<EnemyShipData>> enemyHandle = Addressables.LoadAssetsAsync<EnemyShipData>("EnemyShipData", null);
+        m_assetHandles.Add(enemyHandle);
+        yield return enemyHandle;
+        if (enemyHandle.Status != AsyncOperationStatus.Succeeded) yield break;
+
+        foreach (EnemyShipData ship in enemyHandle.Result)
+        {
+            if (ship != null && ship.Sprite != null) m_enemyShips.Add(ship);
+        }
+    }
+
+    private void StartGame()
+    {
+        if (m_hudPrefab == null || m_playerSprite == null)
+        {
+            Debug.LogError("Game assets could not be loaded. Check Addressables addresses and build the content.");
+            return;
+        }
+
+        if (m_enemyShips.Count == 0)
+        {
+            Debug.LogError("Assign a sprite to an enemy ship asset and add the EnemyShipData Addressables label.", this);
+            return;
+        }
+
+        if (m_isPlaying) return;
+        Time.timeScale = 1f;
         ReadCameraBounds();
-        if (m_hudPrefab == null) m_hudPrefab = Resources.Load<GameObject>("Prefabs/UI/GameHUD");
-        if (m_playerSprite == null || m_enemySprites == null || m_enemySprites.Length == 0)
-        {
-            Sprite[] shipSprites = Resources.LoadAll<Sprite>("kenney_space-shooter-extension/PNG/Sprites/Ships");
-            if (m_playerSprite == null) m_playerSprite = FindSprite(shipSprites, "spaceShips_001");
-            if (m_enemySprites == null || m_enemySprites.Length == 0)
-            {
-                List<Sprite> enemies = new List<Sprite>();
-                foreach (Sprite sprite in shipSprites)
-                {
-                    if (sprite != null && sprite != m_playerSprite) enemies.Add(sprite);
-                }
-                m_enemySprites = enemies.Count > 0 ? enemies.ToArray() : shipSprites;
-            }
-        }
-        if (m_playerMissileSprite == null || m_enemyMissileSprite == null)
-        {
-            Sprite[] missiles = Resources.LoadAll<Sprite>("kenney_space-shooter-extension/PNG/Sprites/Missiles");
-            if (m_playerMissileSprite == null) m_playerMissileSprite = FindSprite(missiles, "spaceMissiles_001");
-            if (m_enemyMissileSprite == null) m_enemyMissileSprite = FindSprite(missiles, "spaceMissiles_003");
-        }
-        playerSprite = m_playerSprite;
-        enemySprites = m_enemySprites;
-        playerMissileSprite = m_playerMissileSprite;
-        enemyMissileSprite = m_enemyMissileSprite;
-        SetupAudio();
+        m_score = 0;
+        m_wave = 0;
+        m_elapsed = 0f;
+        m_displayedElapsedSecond = -1;
+        m_isPlaying = true;
+        m_isPaused = false;
+        SetupPools();
+        m_player.Initialize(m_playerSprite, this);
+        CreateBackground();
+        CreateHud();
+        UpdateHud();
+        m_nextWaveTime = Time.time + 0.8f;
     }
 
     private void Update()
     {
-        if (!isPlaying) return;
-        elapsed += Time.deltaTime;
+        if (!m_isPlaying) return;
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) PauseOrResume();
-        if (!isSpawning && Time.time >= nextWaveTime) StartCoroutine(SpawnFormation());
-        if (Mathf.FloorToInt(elapsed) != displayedElapsedSecond) UpdateHud();
-    }
+        if (m_isPaused) return;
 
-    public void StartGame()
-    {
-        if (isPlaying) return;
-        Time.timeScale = 1f;
-        ReadCameraBounds();
-        hp = m_maxHealth;
-        score = 0;
-        wave = 0;
-        elapsed = 0f;
-        displayedElapsedSecond = -1;
-        isPlaying = true;
-        SetupPools();
-        CreatePlayer();
-        CreateBackground();
-        CreateHud();
-        UpdateHud();
-        nextWaveTime = Time.time + 0.8f;
+        m_elapsed += Time.deltaTime;
+        if (Time.time >= m_nextWaveTime) SpawnWave();
+        if (Mathf.FloorToInt(m_elapsed) != m_displayedElapsedSecond) UpdateHud();
     }
 
     private void ReadCameraBounds()
     {
-        mainCamera = Camera.main;
-        if (mainCamera == null) return;
-        cameraHalfHeight = mainCamera.orthographicSize;
-        cameraHalfWidth = cameraHalfHeight * mainCamera.aspect;
+        m_mainCamera = Camera.main;
+        if (m_mainCamera == null) return;
+        m_cameraHalfHeight = m_mainCamera.orthographicSize;
+        m_cameraHalfWidth = m_cameraHalfHeight * m_mainCamera.aspect;
     }
 
     private void SetupPools()
     {
-        if (enemyPool != null && playerProjectilePool != null && enemyProjectilePool != null)
+        if (m_enemyPool != null)
         {
-            enemyPool.ReleaseAll();
-            playerProjectilePool.ReleaseAll();
-            enemyProjectilePool.ReleaseAll();
+            m_enemyPool.ReleaseAll();
+            m_playerProjectilePool.ReleaseAll();
+            m_enemyProjectilePool.ReleaseAll();
             return;
         }
+
         Transform root = transform.Find("Pools");
         if (root == null)
         {
@@ -128,254 +158,203 @@ public class GameManager : Shared<GameManager>
             poolRoot.transform.SetParent(transform, false);
             root = poolRoot.transform;
         }
-        GameObject enemyTemplate = MakeTemplate("EnemyShipTemplate", root, 0.42f, true);
-        GameObject playerShotTemplate = MakeTemplate("PlayerMissileTemplate", root, 0.12f, false);
-        GameObject enemyShotTemplate = MakeTemplate("EnemyMissileTemplate", root, 0.12f, false);
-        enemyPool = new GameObjectPool(enemyTemplate, root, 48);
-        playerProjectilePool = new GameObjectPool(playerShotTemplate, root, 48);
-        enemyProjectilePool = new GameObjectPool(enemyShotTemplate, root, 48);
+
+        m_enemyPool = new GameObjectPool(MakeTemplate("EnemyShipTemplate", root, 0.42f, true), root, 48);
+        m_playerProjectilePool = new GameObjectPool(MakeTemplate("PlayerMissileTemplate", root, 0.12f, false), root, 48);
+        m_enemyProjectilePool = new GameObjectPool(MakeTemplate("EnemyMissileTemplate", root, 0.12f, false), root, 48);
     }
 
-    private GameObject MakeTemplate(string objectName, Transform parent, float colliderSize, bool isEnemy)
+    private GameObject MakeTemplate(string _name, Transform _parent, float _colliderSize, bool _isEnemy)
     {
-        GameObject item = new GameObject(objectName);
-        item.transform.SetParent(parent, false);
+        GameObject item = new GameObject(_name);
+        item.transform.SetParent(_parent, false);
         SpriteRenderer renderer = item.AddComponent<SpriteRenderer>();
-        renderer.sortingOrder = isEnemy ? 1 : 2;
+        renderer.sortingOrder = _isEnemy ? 1 : 2;
         Rigidbody2D body = item.AddComponent<Rigidbody2D>();
         body.gravityScale = 0f;
         body.bodyType = RigidbodyType2D.Dynamic;
-        if (isEnemy) body.interpolation = RigidbodyInterpolation2D.Interpolate;
+        if (_isEnemy) body.interpolation = RigidbodyInterpolation2D.Interpolate;
         CircleCollider2D collider = item.AddComponent<CircleCollider2D>();
         collider.isTrigger = true;
-        collider.radius = colliderSize;
-        if (isEnemy) item.AddComponent<EnemyController>();
+        collider.radius = _colliderSize;
+        if (_isEnemy) item.AddComponent<EnemyController>();
         else item.AddComponent<ProjectileController>();
         item.SetActive(false);
         return item;
-    }
-
-    private void CreatePlayer()
-    {
-        GameObject playerObject = new GameObject("PlayerShip");
-        playerObject.transform.position = new Vector3(0f, -2.7f, 0f);
-        SpriteRenderer renderer = playerObject.AddComponent<SpriteRenderer>();
-        renderer.sortingOrder = 3;
-        Rigidbody2D body = playerObject.AddComponent<Rigidbody2D>();
-        body.gravityScale = 0f;
-        body.bodyType = RigidbodyType2D.Dynamic;
-        body.interpolation = RigidbodyInterpolation2D.Interpolate;
-        CircleCollider2D collider = playerObject.AddComponent<CircleCollider2D>();
-        collider.isTrigger = true;
-        collider.radius = 0.38f;
-        player = playerObject.AddComponent<PlayerController>();
-        player.Initialize(playerSprite);
     }
 
     private void CreateBackground()
     {
         GameObject backgroundObject = new GameObject("GameBackground");
         backgroundObject.transform.SetParent(transform, false);
-        background = backgroundObject.AddComponent<GameBackgroundMotion>();
-        background.Initialize(player, mainCamera);
+        m_background = backgroundObject.AddComponent<GameBackgroundMotion>();
+        m_background.Initialize(m_player, m_mainCamera, m_backgroundSprite);
     }
 
     private void CreateHud()
     {
-        if (m_hudPrefab == null)
-        {
-            Debug.LogError("GameHUD prefab was not found in Resources/Prefabs/UI.");
-            return;
-        }
-
         GameObject hudObject = Instantiate(m_hudPrefab);
-        hud = hudObject.GetComponent<GameHud>();
-        if (hud == null)
+        m_hud = hudObject.GetComponent<GameHud>();
+        if (m_hud == null)
         {
             Debug.LogError("GameHUD prefab is missing the GameHud component.");
             Destroy(hudObject);
             return;
         }
-        hud.Initialize(RestartGame, ReturnToTitle);
+
+        m_hud.Initialize(RestartGame, ReturnToTitle);
+        m_hud.SetHealth(m_player.CurrentHealth, m_player.MaxHealth);
     }
+
     private void UpdateHud()
     {
-        displayedElapsedSecond = Mathf.FloorToInt(elapsed);
-        if (hud != null) hud.SetStats(score, wave, elapsed, hp, m_maxHealth);
+        m_displayedElapsedSecond = Mathf.FloorToInt(m_elapsed);
+        if (m_hud != null) m_hud.SetStats(m_score, m_wave, m_elapsed);
     }
 
-    public void FirePlayerShot(Vector3 position, Vector2 direction)
+    public void FirePlayerShot(Vector3 _position, Vector2 _direction)
     {
-        if (!isPlaying || playerProjectilePool == null) return;
-        CreateProjectile(playerProjectilePool, playerMissileSprite, position, direction, 10f, false);
-        PlaySound(fireClip, 0.38f);
+        if (!IsPlaying || m_playerProjectilePool == null) return;
+        CreateProjectile(m_playerProjectilePool, m_playerMissileSprite, _position, _direction, 10f, false);
+        AudioManager.Instance?.PlayEffect("Fire", 0.38f);
     }
 
-    public void FireEnemyShot(Vector3 position, Vector3 targetPosition)
+    public void FireEnemyShot(Vector3 _position, Vector3 _targetPosition)
     {
-        if (!isPlaying || enemyProjectilePool == null) return;
-        Vector2 direction = ((Vector2)targetPosition - (Vector2)position).normalized;
-        CreateProjectile(enemyProjectilePool, enemyMissileSprite, position, direction, 4.5f, true);
+        if (!IsPlaying || m_enemyProjectilePool == null) return;
+        Vector2 direction = ((Vector2)_targetPosition - (Vector2)_position).normalized;
+        CreateProjectile(m_enemyProjectilePool, m_enemyMissileSprite, _position, direction, 4.5f, true);
     }
 
-    private void CreateProjectile(GameObjectPool pool, Sprite sprite, Vector3 position, Vector2 direction, float speed, bool enemyShot)
+    private void CreateProjectile(GameObjectPool _pool, Sprite _sprite, Vector3 _position, Vector2 _direction, float _speed, bool _enemyShot)
     {
-        GameObject projectileObject = pool.Get(position, Quaternion.identity);
-        projectileObject.transform.localScale = Vector3.one * (enemyShot ? 0.65f : 0.8f);
+        GameObject projectileObject = _pool.Get(_position, Quaternion.identity);
+        projectileObject.transform.localScale = Vector3.one * (_enemyShot ? 0.65f : 0.8f);
         ProjectileController projectile = projectileObject.GetComponent<ProjectileController>();
         projectileObject.SetActive(true);
-        projectile.Initialize(pool, sprite, direction, speed, enemyShot, mainCamera, cameraHalfWidth, cameraHalfHeight);
+        projectile.Initialize(_pool, _sprite, _direction, _speed, _enemyShot, m_mainCamera, m_cameraHalfWidth, m_cameraHalfHeight, this);
     }
 
-    private IEnumerator SpawnFormation()
+    private void SpawnWave()
     {
-        isSpawning = true;
-        wave++;
+        m_wave++;
         UpdateHud();
-        int shipsPerSide = Mathf.Clamp(1 + wave / 2, 2, 5);
-        for (int side = 0; side < 4; side++)
+
+        int enemyCount = Random.Range(8, 13);
+        float angleStep = 2f * Mathf.PI / enemyCount;
+        float startAngle = Random.Range(0f, 2f * Mathf.PI);
+        float radiusX = (m_cameraHalfWidth + 0.6f) * Mathf.Sqrt(2f);
+        float radiusY = (m_cameraHalfHeight + 0.6f) * Mathf.Sqrt(2f);
+        Vector3 center = m_mainCamera.transform.position;
+        for (int i = 0; i < enemyCount; i++)
         {
-            for (int i = 0; i < shipsPerSide; i++)
-            {
-                SpawnEnemy(side, i, shipsPerSide);
-                yield return SpawnDelay;
-            }
+            float angle = startAngle + i * angleStep + Random.Range(-0.2f, 0.2f) * angleStep;
+            Vector3 position = new Vector3(center.x + Mathf.Cos(angle) * radiusX, center.y + Mathf.Sin(angle) * radiusY, 0f);
+            SpawnEnemy(position);
         }
-        isSpawning = false;
-        nextWaveTime = Time.time + Mathf.Max(2f, 5.5f - wave * 0.12f);
+
+        m_nextWaveTime = Time.time + Mathf.Max(2f, 5.5f - m_wave * 0.12f);
     }
 
-    private void SpawnEnemy(int side, int index, int count)
+    private void SpawnEnemy(Vector3 _position)
     {
-        float spacing = 1.35f;
-        float offset = (index - (count - 1) * 0.5f) * spacing;
-        Vector3 position;
-        if (side == 0) position = new Vector3(offset, cameraHalfHeight + 1.2f, 0f);
-        else if (side == 1) position = new Vector3(offset, -cameraHalfHeight - 1.2f, 0f);
-        else if (side == 2) position = new Vector3(-cameraHalfWidth - 1.2f, offset, 0f);
-        else position = new Vector3(cameraHalfWidth + 1.2f, offset, 0f);
-        position.x += Random.Range(-0.25f, 0.25f);
-        position.y += Random.Range(-0.25f, 0.25f);
-
-        GameObject enemyObject = enemyPool.Get(position, Quaternion.identity);
+        GameObject enemyObject = m_enemyPool.Get(_position, Quaternion.identity);
         enemyObject.transform.localScale = Vector3.one * Random.Range(0.75f, 0.95f);
-        Sprite sprite = enemySprites.Length > 0 ? enemySprites[Random.Range(0, enemySprites.Length)] : null;
+        EnemyShipData ship = m_enemyShips[Random.Range(0, m_enemyShips.Count)];
         EnemyController enemy = enemyObject.GetComponent<EnemyController>();
-        int enemyHp = wave > 3 && Random.value < 0.25f ? 2 : 1;
-        enemy.Initialize(enemyPool, sprite, enemyHp, 1.0f + Mathf.Min(wave * 0.055f, 1.3f), player, cameraHalfWidth, cameraHalfHeight);
+        int enemyHp = m_wave > 3 && Random.value < 0.25f ? 2 : 1;
+        float speedBonus = Mathf.Min(m_wave * 0.055f, 1.3f);
+        enemy.Initialize(m_enemyPool, ship, enemyHp, speedBonus, m_player, this);
         enemyObject.SetActive(true);
     }
 
     public void EnemyDestroyed()
     {
-        if (!isPlaying) return;
-        score += 100;
+        if (!IsPlaying) return;
+        m_score += 100;
         UpdateHud();
-        PlaySound(explosionClip, 0.3f);
+        AudioManager.Instance?.PlayEffect("Explosion", 0.3f);
     }
 
     public void DamagePlayer()
     {
-        if (!isPlaying) return;
-        hp--;
-        if (hp <= 0) EndGame();
-        else UpdateHud();
+        if (IsPlaying) m_player.TakeDamage();
+    }
+
+    private void OnHealthChanged(int _current, int _maximum)
+    {
+        if (m_hud != null) m_hud.SetHealth(_current, _maximum);
     }
 
     private void EndGame()
     {
-        StopAllCoroutines();
-        isSpawning = false;
-        isPlaying = false;
+        m_isPlaying = false;
         int best = PlayerPrefs.GetInt("ShotShotShot_BestScore", 0);
-        if (score > best)
+        if (m_score > best)
         {
-            best = score;
+            best = m_score;
             PlayerPrefs.SetInt("ShotShotShot_BestScore", best);
             PlayerPrefs.Save();
         }
-        if (player != null) player.SetVisible(false);
+
+        if (m_player != null) m_player.SetVisible(false);
         UpdateHud();
-        if (hud != null) hud.ShowGameOver(score, best);
+        if (m_hud != null) m_hud.ShowGameOver(m_score, best);
     }
 
     private void RestartGame()
     {
-        if (player != null) Destroy(player.gameObject);
-        if (hud != null) Destroy(hud.gameObject);
-        if (background != null) Destroy(background.gameObject);
-        player = null;
-        hud = null;
-        background = null;
-        isPlaying = false;
+        if (m_hud != null) Destroy(m_hud.gameObject);
+        if (m_background != null) Destroy(m_background.gameObject);
+        m_hud = null;
+        m_background = null;
+        m_isPlaying = false;
         StartGame();
     }
 
     private void ReturnToTitle()
     {
-        Time.timeScale = 1f;
-        StopAllCoroutines();
-        isSpawning = false;
-        isPlaying = false;
-        if (player != null) Destroy(player.gameObject);
-        if (hud != null) Destroy(hud.gameObject);
-        if (background != null) Destroy(background.gameObject);
-        enemyPool?.ReleaseAll();
-        playerProjectilePool?.ReleaseAll();
-        enemyProjectilePool?.ReleaseAll();
-        SceneTransition transition = SceneTransition.Instance;
-        if (transition != null) transition.LoadScene("sTitle");
-        else SceneManager.LoadScene("sTitle");
-        Destroy(gameObject);
-    }
-
-    public void QuitGame()
-    {
-#if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
-#else
-        Application.Quit();
-#endif
+        m_isPlaying = false;
+        ResumeGame();
+        SceneManager.Instance.LoadScene("sTitle");
     }
 
     private void PauseOrResume()
     {
-        Time.timeScale = Time.timeScale > 0f ? 0f : 1f;
-    }
-
-    private void SetupAudio()
-    {
-        audioSource = gameObject.AddComponent<AudioSource>();
-        audioSource.playOnAwake = false;
-        audioSource.spatialBlend = 0f;
-        mixer = m_audioMixer != null ? m_audioMixer : Resources.Load<AudioMixer>("Mixer");
-        fireClip = m_fireClip != null ? m_fireClip : Resources.Load<AudioClip>("kenney_sci-fi-sounds/Audio/laserRetro_000");
-        explosionClip = m_explosionClip != null ? m_explosionClip : Resources.Load<AudioClip>("kenney_sci-fi-sounds/Audio/explosionCrunch_000");
-        if (mixer != null)
+        PopupManager popup = PopupManager.Instance;
+        if (popup == null) return;
+        if (m_isPaused)
         {
-            AudioMixerGroup[] groups = mixer.FindMatchingGroups("VFX");
-            if (groups.Length > 0) audioSource.outputAudioMixerGroup = groups[0];
+            popup.Close();
+            return;
         }
+
+        if (!popup.TryOpenSettings(ResumeGame, ReturnToTitle)) return;
+        m_isPaused = true;
+        Time.timeScale = 0f;
     }
 
-    private void PlaySound(AudioClip clip, float volume)
+    private void ResumeGame()
     {
-        if (clip != null && audioSource != null) audioSource.PlayOneShot(clip, volume);
+        m_isPaused = false;
+        Time.timeScale = 1f;
     }
 
-    private static Sprite FindSprite(Sprite[] sprites, string spriteName)
+    private void OnDestroy()
     {
-        if (sprites == null) return null;
-        foreach (Sprite sprite in sprites)
+        if (m_isPaused)
         {
-            if (sprite != null && sprite.name == spriteName) return sprite;
+            PopupManager.Instance?.Close();
+            ResumeGame();
         }
-        return sprites.Length > 0 ? sprites[0] : null;
+
+        if (m_player != null)
+        {
+            m_player.HealthChanged -= OnHealthChanged;
+            m_player.HealthDepleted -= EndGame;
+        }
+
+        foreach (AsyncOperationHandle handle in m_assetHandles)
+            if (handle.IsValid()) Addressables.Release(handle);
     }
 }
-
-
-
-
-
-

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class Shared<T> : MonoBehaviour where T : Shared<T>
+public abstract class Singleton<T> : MonoBehaviour where T : MonoBehaviour
 {
     public static T Instance { get; private set; }
 
@@ -11,7 +11,8 @@ public class Shared<T> : MonoBehaviour where T : Shared<T>
             Destroy(gameObject);
             return;
         }
-        Instance = (T)this;
+
+        Instance = this as T;
         DontDestroyOnLoad(gameObject);
     }
 

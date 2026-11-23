@@ -1,47 +1,45 @@
 using UnityEngine;
 
-[RequireComponent(typeof(AudioSource))]
 public class ButtonSelector : MonoBehaviour
 {
-    [SerializeField] private RectTransform selector;
-    [SerializeField] private float space;
-    [SerializeField] private AudioClip selectClip;
-    private IButton[] buttons;
-    private AudioSource audioSource;
-    private int selected;
-
-    private void Awake()
-    {
-        audioSource = GetComponent<AudioSource>();
-    }
+    [SerializeField] private RectTransform m_selector;
+    [SerializeField] private float m_space;
+    private IButton[] m_buttons;
+    private int m_selectedIndex;
 
     private void Start()
     {
-        buttons = GetComponentsInChildren<IButton>();
-        if (selector == null || buttons.Length == 0)
+        m_buttons = GetComponentsInChildren<IButton>();
+        if (m_selector == null || m_buttons.Length == 0)
         {
             enabled = false;
             return;
         }
 
-        selector.gameObject.SetActive(true);
-        Vector2 position = buttons[0].SelectorPosition;
-        selector.anchoredPosition = new Vector2(position.x - space, position.y);
+        m_selector.gameObject.SetActive(true);
+        UpdateSelector(m_buttons[0]);
     }
 
     private void Update()
     {
-        for (int i = 0; i < buttons.Length; i++)
+        for (int i = 0; i < m_buttons.Length; i++)
         {
-            if (buttons[i] == null || !buttons[i].IsHighlighted) continue;
-            if (selected != i)
+            if (m_buttons[i] == null || !m_buttons[i].IsHighlighted) continue;
+            if (m_selectedIndex != i)
             {
-                selected = i;
-                if (selectClip != null) audioSource.PlayOneShot(selectClip);
+                m_selectedIndex = i;
+                AudioManager.Instance?.PlayUi("ButtonSelect");
             }
 
-            Vector2 position = buttons[i].SelectorPosition;
-            selector.anchoredPosition = new Vector2(position.x - space, position.y);
+            break;
         }
+
+        UpdateSelector(m_buttons[m_selectedIndex]);
+    }
+
+    private void UpdateSelector(IButton _button)
+    {
+        Vector2 position = _button.SelectorPosition;
+        m_selector.anchoredPosition = new Vector2(position.x - m_space, position.y);
     }
 }

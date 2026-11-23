@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c118a6fff2971345ad6638dc3c70a77, type: 3}
+  m_Name: Scout
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyShipData
+  m_sprite: {fileID: 803087818185994991, guid: f8a6ba719acc9344aa5086108cab9e77, type: 3}
+  m_moveSpeed: 1.55
+  m_attackInterval: 2.9

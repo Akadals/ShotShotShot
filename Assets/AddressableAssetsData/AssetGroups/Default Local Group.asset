@@ -1,0 +1,259 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Default Local Group
+  m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
+  m_GroupName: Default Local Group
+  m_GUID: 915d5bb61ade35a4494ccb327466406d
+  m_SerializeEntries:
+  - m_GUID: 13ab298ab6943164db7a5b682561f203
+    m_Address: Mixer
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Mixer
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 1502352cf340ae049ad08476ccbb37d3
+    m_Address: spaceMeteors_001
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - TitleMeteor
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 15342d4adf69a0b42b9acca79a9e85b0
+    m_Address: spaceShips_003
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - EnemyShip
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 240a4e325bc17e348b0fe2aa1df2ab82
+    m_Address: spaceMeteors_002
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - TitleMeteor
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 25f113054f80ff246b9146d69c418cfb
+    m_Address: TitleMusic
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Music
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 26c56e9d93928dd4b90b46bc4c255fc3
+    m_Address: EnemyShip/Interceptor
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - EnemyShipData
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 33951d7553ba455428d273d723bb1be3
+    m_Address: EnemyShip/Gunship
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - EnemyShipData
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 3455094001c7d944ba4841a5c77d82c8
+    m_Address: EnemyShip/Raider
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - EnemyShipData
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 350fda269a16cee4793659f05b9861a4
+    m_Address: Fire
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - GameAudio
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 3c96908b12284334d9cdab0daf493af3
+    m_Address: EnemyShip/Dreadnought
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - EnemyShipData
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 420984752ca06bc498f4c619cddfbc72
+    m_Address: spaceMeteors_004
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - TitleMeteor
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 6304242825c89a54eae28acc6ecfb9c8
+    m_Address: EnemyShip/Defender
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - EnemyShipData
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 66206c1283cd39048955836c5ed19fa4
+    m_Address: spaceMeteors_003
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - TitleMeteor
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 6bf5a9947722c2a4fbb5be39c8f08ebd
+    m_Address: EnemyShip/Corsair
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - EnemyShipData
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 6ebf53db2d1a73d4dbda8c8ce55970e4
+    m_Address: SettingsPopup
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - UI
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 6f7cc109948135d488fb85a610f2202c
+    m_Address: Explosion
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - GameAudio
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 73594ce43ec48ad40aa0b1f0b2f8db47
+    m_Address: PlayerShip
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Gameplay
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 7cca634ee77cf8f44a5e4fbf3b4ca000
+    m_Address: spaceShips_007
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - EnemyShip
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 851e11994f70f1040a7c7e1e4411f452
+    m_Address: EnemyMissile
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Projectile
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 8627624168f226243826ad15de894334
+    m_Address: Background
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Gameplay
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 8b265f5f15b32bc459d3442b6d89fe8c
+    m_Address: spaceShips_004
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - EnemyShip
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 8f1bd45da665f194bbe239fd431ef685
+    m_Address: EnemyShip/Bomber
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - EnemyShipData
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: 970c30ca981f4f94e9a5c0d1a9731944
+    m_Address: spaceShips_009
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - EnemyShip
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: a95c0630f18b9c44db408c30f85a0b39
+    m_Address: GameHUD
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - UI
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: b76dfa2a9f0f9d6459e3f2a904e0a14f
+    m_Address: ButtonSelect
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - UIAudio
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: b8c8f090713822345899dac4e04876c2
+    m_Address: spaceShips_008
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - EnemyShip
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: c0a27905582fe7347a201f0a1e10c968
+    m_Address: ButtonTick
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - UIAudio
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: d6dd9578392ea134f9e234ccd256f81e
+    m_Address: EnemyShip/Scout
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - EnemyShipData
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: e41e656f27282e74c971d2b884284b6c
+    m_Address: spaceShips_006
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - EnemyShip
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: f88c47dea7967a940988ace3e5fb5fff
+    m_Address: spaceShips_005
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - EnemyShip
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: f8a6ba719acc9344aa5086108cab9e77
+    m_Address: spaceShips_002
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - EnemyShip
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: fb9dfee4902900141818def2fe6cedc5
+    m_Address: PlayerMissile
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Projectile
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  - m_GUID: fbd995a4df0e2b34f98152dc9d5e660f
+    m_Address: ButtonClick
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - UIAudio
+    FlaggedDuringContentUpdateRestriction: 0
+    m_FolderGuid: 
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 92cbb55223ecfac47ae32347ff4bf2d2, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 0aae195f61d218d48848559cecceaa56, type: 2}
+    - {fileID: 11400000, guid: e35f19157361a7945b89fcbb568a831f, type: 2}
+    m_SchemaDisplayOrder:
+    - Default Local Group_ContentUpdateGroupSchema
+    - Default Local Group_BundledAssetGroupSchema
+  m_IncludeInBuild: 1
+  m_IncludeInBuildMigrated: 1

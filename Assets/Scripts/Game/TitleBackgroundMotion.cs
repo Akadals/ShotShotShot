@@ -1,58 +1,79 @@
+using System.Collections;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 public class TitleBackgroundMotion : MonoBehaviour
 {
-    [SerializeField] private Sprite[] m_meteorSprites;
-    [SerializeField] private float scrollSpeed = 0.28f;
-    [SerializeField] private float meteorInterval = 3.2f;
-    [SerializeField] private float meteorSpeed = 0.55f;
-    private const int MeteorPoolSize = 24;
-    private Transform[] tiles;
-    private float tileHeight = 15.36f;
-    private float nextMeteorTime;
-    private Camera mainCamera;
-    private Sprite[] meteorSprites;
-    private GameObjectPool meteorPool;
+    [SerializeField] private float m_scrollSpeed = 0.28f;
+    [SerializeField] private float m_meteorInterval = 3.2f;
+    [SerializeField] private float m_meteorSpeed = 0.55f;
+    [SerializeField] private float m_tileHeight = 15.36f;
+    [SerializeField] private int m_meteorPoolSize = 24;
 
-    private void Start()
+    private Transform[] m_tiles;
+    private float m_nextMeteorTime;
+    private Camera m_mainCamera;
+    private Sprite[] m_meteorSprites;
+    private GameObjectPool m_meteorPool;
+    private AsyncOperationHandle<System.Collections.Generic.IList<Sprite>> m_meteorHandle;
+
+    private IEnumerator Start()
     {
-        mainCamera = Camera.main;
-        tiles = new Transform[transform.childCount];
-        for (int i = 0; i < tiles.Length; i++) tiles[i] = transform.GetChild(i);
-        if (tiles.Length > 1)
-        {
-            float highest = float.MinValue;
-            float second = float.MinValue;
-            foreach (Transform tile in tiles)
-            {
-                float y = tile.localPosition.y;
-                if (y > highest) { second = highest; highest = y; }
-                else if (y > second && y < highest) second = y;
-            }
-            if (second > float.MinValue) tileHeight = Mathf.Abs(highest - second);
-        }
+        m_meteorSprites = System.Array.Empty<Sprite>();
+        m_meteorHandle = Addressables.LoadAssetsAsync<Sprite>("TitleMeteor", null);
+        yield return m_meteorHandle;
+        if (m_meteorHandle.Status == AsyncOperationStatus.Succeeded)
+            m_meteorSprites = new System.Collections.Generic.List<Sprite>(m_meteorHandle.Result).ToArray();
+        else
+            Debug.LogError("No sprites have the Addressables label 'TitleMeteor'.");
 
-        meteorSprites = m_meteorSprites != null && m_meteorSprites.Length > 0
-            ? m_meteorSprites
-            : Resources.LoadAll<Sprite>("kenney_space-shooter-extension/PNG/Sprites/Meteors");
-        if (mainCamera != null && meteorSprites.Length > 0) CreateMeteorPool();
-        nextMeteorTime = Time.time + Random.Range(0.5f, meteorInterval);
+        m_mainCamera = Camera.main;
+        m_tiles = new Transform[transform.childCount];
+        for (int i = 0; i < m_tiles.Length; i++) m_tiles[i] = transform.GetChild(i);
+        UpdateTileHeight();
+
+        if (m_mainCamera != null && m_meteorSprites.Length > 0) CreateMeteorPool();
+        m_nextMeteorTime = Time.time + Random.Range(0.5f, m_meteorInterval);
     }
 
     private void Update()
     {
-        foreach (Transform tile in tiles)
+        if (m_tiles == null) return;
+        foreach (Transform tile in m_tiles)
         {
-            tile.localPosition += Vector3.down * (scrollSpeed * Time.deltaTime);
-            if (tile.localPosition.y < -tileHeight * 1.5f)
-                tile.localPosition += Vector3.up * tileHeight * 3f;
+            tile.localPosition += Vector3.down * (m_scrollSpeed * Time.deltaTime);
+            if (tile.localPosition.y < -m_tileHeight * 1.5f)
+                tile.localPosition += Vector3.up * m_tileHeight * 3f;
         }
 
-        if (meteorPool != null && Time.time >= nextMeteorTime)
+        if (m_meteorPool != null && Time.time >= m_nextMeteorTime)
         {
-            SpawnThreeWayMeteorBurst();
-            nextMeteorTime = Time.time + Random.Range(meteorInterval * 0.8f, meteorInterval * 1.4f);
+            SpawnMeteorBurst();
+            m_nextMeteorTime = Time.time + Random.Range(m_meteorInterval * 0.8f, m_meteorInterval * 1.4f);
         }
+    }
+
+    private void UpdateTileHeight()
+    {
+        if (m_tiles.Length < 2) return;
+        float highest = float.MinValue;
+        float secondHighest = float.MinValue;
+        foreach (Transform tile in m_tiles)
+        {
+            float y = tile.localPosition.y;
+            if (y > highest)
+            {
+                secondHighest = highest;
+                highest = y;
+            }
+            else if (y > secondHighest && y < highest)
+            {
+                secondHighest = y;
+            }
+        }
+
+        if (secondHighest > float.MinValue) m_tileHeight = Mathf.Abs(highest - secondHighest);
     }
 
     private void CreateMeteorPool()
@@ -64,13 +85,13 @@ public class TitleBackgroundMotion : MonoBehaviour
         renderer.sortingOrder = 1;
         template.AddComponent<AmbientMeteor>();
         template.SetActive(false);
-        meteorPool = new GameObjectPool(template, transform, MeteorPoolSize);
+        m_meteorPool = new GameObjectPool(template, transform, m_meteorPoolSize);
     }
 
-    private void SpawnThreeWayMeteorBurst()
+    private void SpawnMeteorBurst()
     {
-        float halfHeight = mainCamera.orthographicSize;
-        float halfWidth = halfHeight * mainCamera.aspect;
+        float halfHeight = m_mainCamera.orthographicSize;
+        float halfWidth = halfHeight * m_mainCamera.aspect;
         float baseAngle = Random.Range(0f, 360f);
         for (int i = 0; i < 3; i++)
         {
@@ -82,56 +103,62 @@ public class TitleBackgroundMotion : MonoBehaviour
         }
     }
 
-    private void SpawnMeteor(Vector2 start, Vector2 direction, float halfWidth, float halfHeight)
+    private void SpawnMeteor(Vector2 _start, Vector2 _direction, float _halfWidth, float _halfHeight)
     {
-        Vector3 position = mainCamera.transform.position + new Vector3(start.x, start.y, 5f);
-        GameObject meteor = meteorPool.Get(position, Quaternion.identity);
+        Vector3 position = m_mainCamera.transform.position + new Vector3(_start.x, _start.y, 5f);
+        GameObject meteor = m_meteorPool.Get(position, Quaternion.identity);
         meteor.transform.localScale = Vector3.one * Random.Range(0.2f, 0.42f);
         AmbientMeteor motion = meteor.GetComponent<AmbientMeteor>();
-        Sprite sprite = meteorSprites[Random.Range(0, meteorSprites.Length)];
-        motion.Initialize(meteorPool, mainCamera, sprite, direction,
-            meteorSpeed * Random.Range(0.65f, 1.35f), halfWidth, halfHeight);
+        Sprite sprite = m_meteorSprites[Random.Range(0, m_meteorSprites.Length)];
+        motion.Initialize(m_meteorPool, m_mainCamera, sprite, _direction,
+            m_meteorSpeed * Random.Range(0.65f, 1.35f), _halfWidth, _halfHeight);
         meteor.SetActive(true);
+    }
+
+    private void OnDestroy()
+    {
+        if (m_meteorHandle.IsValid()) Addressables.Release(m_meteorHandle);
     }
 }
 
 public class AmbientMeteor : MonoBehaviour
 {
-    private GameObjectPool pool;
-    private Camera mainCamera;
-    private SpriteRenderer spriteRenderer;
-    private Vector2 direction;
-    private float speed;
-    private float halfWidth;
-    private float halfHeight;
-    private float rotationSpeed;
-    private bool isActive;
+    private GameObjectPool m_pool;
+    private Camera m_mainCamera;
+    private SpriteRenderer m_spriteRenderer;
+    private Vector2 m_direction;
+    private float m_speed;
+    private float m_halfWidth;
+    private float m_halfHeight;
+    private float m_rotationSpeed;
+    private bool m_isActive;
 
-    public void Initialize(GameObjectPool ownerPool, Camera camera, Sprite sprite, Vector2 moveDirection, float moveSpeed, float width, float height)
+    public void Initialize(GameObjectPool _ownerPool, Camera _camera, Sprite _sprite, Vector2 _moveDirection,
+        float _moveSpeed, float _width, float _height)
     {
-        pool = ownerPool;
-        mainCamera = camera;
-        direction = moveDirection;
-        speed = moveSpeed;
-        halfWidth = width;
-        halfHeight = height;
-        rotationSpeed = Random.Range(-28f, 28f);
-        if (spriteRenderer == null) spriteRenderer = GetComponent<SpriteRenderer>();
-        spriteRenderer.sprite = sprite;
+        m_pool = _ownerPool;
+        m_mainCamera = _camera;
+        m_direction = _moveDirection;
+        m_speed = _moveSpeed;
+        m_halfWidth = _width;
+        m_halfHeight = _height;
+        m_rotationSpeed = Random.Range(-28f, 28f);
+        if (m_spriteRenderer == null) m_spriteRenderer = GetComponent<SpriteRenderer>();
+        m_spriteRenderer.sprite = _sprite;
         transform.rotation = Quaternion.Euler(0f, 0f, Random.Range(0f, 360f));
-        isActive = true;
+        m_isActive = true;
     }
 
     private void Update()
     {
-        if (!isActive) return;
-        transform.position += (Vector3)(direction * (speed * Time.deltaTime));
-        transform.Rotate(0f, 0f, rotationSpeed * Time.deltaTime);
-        Vector3 local = transform.position - mainCamera.transform.position;
-        if (Mathf.Abs(local.x) > halfWidth + 2f || Mathf.Abs(local.y) > halfHeight + 2f)
+        if (!m_isActive) return;
+        transform.position += (Vector3)(m_direction * (m_speed * Time.deltaTime));
+        transform.Rotate(0f, 0f, m_rotationSpeed * Time.deltaTime);
+        Vector3 local = transform.position - m_mainCamera.transform.position;
+        if (Mathf.Abs(local.x) > m_halfWidth + 2f || Mathf.Abs(local.y) > m_halfHeight + 2f)
         {
-            isActive = false;
-            pool.Release(gameObject);
+            m_isActive = false;
+            m_pool.Release(gameObject);
         }
     }
 }

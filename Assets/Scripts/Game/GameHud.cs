@@ -5,102 +5,94 @@ using UnityEngine.UI;
 
 public class GameHud : MonoBehaviour
 {
-    [SerializeField] private TextMeshProUGUI scoreText;
-    [SerializeField] private TextMeshProUGUI waveText;
-    [SerializeField] private TextMeshProUGUI timeText;
-    [SerializeField] private TextMeshProUGUI hullText;
-    [SerializeField] private Image[] healthSegments;
-    [SerializeField] private GameObject gameOverPanel;
-    [SerializeField] private TextMeshProUGUI finalText;
-    [SerializeField] private Button retryButton;
-    [SerializeField] private Button titleButton;
-    [SerializeField] private bool m_useInspectorButtonEvents;
+    [SerializeField] private TextMeshProUGUI m_scoreText;
+    [SerializeField] private TextMeshProUGUI m_waveText;
+    [SerializeField] private TextMeshProUGUI m_timeText;
+    [SerializeField] private TextMeshProUGUI m_hullText;
+    [SerializeField] private Image[] m_healthSegments;
+    [SerializeField] private GameObject m_gameOverPanel;
+    [SerializeField] private TextMeshProUGUI m_finalText;
+    [SerializeField] private Button m_retryButton;
+    [SerializeField] private Button m_titleButton;
 
-    private Action retryAction;
-    private Action titleAction;
-    private int displayedScore = int.MinValue;
-    private int displayedWave = int.MinValue;
-    private int displayedElapsedSecond = int.MinValue;
-    private int displayedHp = int.MinValue;
-    private int displayedMaxHp = int.MinValue;
+    private Action m_retryAction;
+    private Action m_titleAction;
+    private int m_displayedScore = int.MinValue;
+    private int m_displayedWave = int.MinValue;
+    private int m_displayedElapsedSecond = int.MinValue;
+    private int m_displayedHealth = int.MinValue;
+    private int m_displayedMaximumHealth = int.MinValue;
 
-    public void Initialize(Action onRetry, Action onTitle)
+    public void Initialize(Action _onRetry, Action _onTitle)
     {
-        retryAction = onRetry;
-        titleAction = onTitle;
-        displayedScore = int.MinValue;
-        displayedWave = int.MinValue;
-        displayedElapsedSecond = int.MinValue;
-        displayedHp = int.MinValue;
-        displayedMaxHp = int.MinValue;
-
-        if (!m_useInspectorButtonEvents && retryButton != null)
-        {
-            retryButton.onClick.RemoveListener(Retry);
-            retryButton.onClick.AddListener(Retry);
-        }
-        if (!m_useInspectorButtonEvents && titleButton != null)
-        {
-            titleButton.onClick.RemoveListener(ReturnToTitle);
-            titleButton.onClick.AddListener(ReturnToTitle);
-        }
-        if (gameOverPanel != null) gameOverPanel.SetActive(false);
+        m_retryAction = _onRetry;
+        m_titleAction = _onTitle;
+        m_displayedScore = int.MinValue;
+        m_displayedWave = int.MinValue;
+        m_displayedElapsedSecond = int.MinValue;
+        m_displayedHealth = int.MinValue;
+        m_displayedMaximumHealth = int.MinValue;
+        if (m_retryButton != null) m_retryButton.onClick.AddListener(Retry);
+        if (m_titleButton != null) m_titleButton.onClick.AddListener(ReturnToTitle);
+        if (m_gameOverPanel != null) m_gameOverPanel.SetActive(false);
     }
 
-    public void SetStats(int score, int wave, float elapsed, int hp, int maxHp)
+    public void SetStats(int _score, int _wave, float _elapsed)
     {
-        if (score != displayedScore)
+        if (_score != m_displayedScore)
         {
-            if (scoreText != null) scoreText.SetText("SCORE  {0:000000}", score);
-            displayedScore = score;
-        }
-        if (wave != displayedWave)
-        {
-            if (waveText != null) waveText.SetText("WAVE  {0:00}", wave);
-            displayedWave = wave;
+            if (m_scoreText != null) m_scoreText.SetText("SCORE  {0:000000}", _score);
+            m_displayedScore = _score;
         }
 
-        int elapsedSecond = Mathf.FloorToInt(elapsed);
-        if (elapsedSecond != displayedElapsedSecond)
+        if (_wave != m_displayedWave)
         {
-            if (timeText != null) timeText.SetText("{0:00}:{1:00}", elapsedSecond / 60, elapsedSecond % 60);
-            displayedElapsedSecond = elapsedSecond;
+            if (m_waveText != null) m_waveText.SetText("WAVE  {0:00}", _wave);
+            m_displayedWave = _wave;
         }
 
-        if (hp == displayedHp && maxHp == displayedMaxHp) return;
-        if (hullText != null) hullText.SetText("HULL  {0:0}/{1:0}", hp, maxHp);
-        displayedHp = hp;
-        displayedMaxHp = maxHp;
+        int elapsedSecond = Mathf.FloorToInt(_elapsed);
+        if (elapsedSecond == m_displayedElapsedSecond) return;
+        if (m_timeText != null) m_timeText.SetText("{0:00}:{1:00}", elapsedSecond / 60, elapsedSecond % 60);
+        m_displayedElapsedSecond = elapsedSecond;
+    }
 
-        if (healthSegments == null) return;
+    public void SetHealth(int _health, int _maximumHealth)
+    {
+        if (_health == m_displayedHealth && _maximumHealth == m_displayedMaximumHealth) return;
+        if (m_hullText != null) m_hullText.SetText("HULL  {0:0}/{1:0}", _health, _maximumHealth);
+        m_displayedHealth = _health;
+        m_displayedMaximumHealth = _maximumHealth;
+
+        if (m_healthSegments == null) return;
         Color readyColor = new Color(0.25f, 0.9f, 1f, 1f);
         Color criticalColor = new Color(1f, 0.24f, 0.32f, 1f);
         Color emptyColor = new Color(0.09f, 0.17f, 0.24f, 1f);
-        int activeSegmentCount = maxHp > 0
-            ? Mathf.CeilToInt((float)hp * healthSegments.Length / maxHp)
+        int activeSegmentCount = _maximumHealth > 0
+            ? Mathf.CeilToInt((float)_health * m_healthSegments.Length / _maximumHealth)
             : 0;
-        for (int i = 0; i < healthSegments.Length; i++)
+        for (int i = 0; i < m_healthSegments.Length; i++)
         {
-            if (healthSegments[i] == null) continue;
-            healthSegments[i].color = i < activeSegmentCount
-                ? (hp == 1 ? criticalColor : readyColor)
+            if (m_healthSegments[i] == null) continue;
+            m_healthSegments[i].color = i < activeSegmentCount
+                ? (_health == 1 ? criticalColor : readyColor)
                 : emptyColor;
         }
     }
 
-    public void ShowGameOver(int score, int bestScore)
+    public void ShowGameOver(int _score, int _bestScore)
     {
-        if (finalText != null) finalText.SetText("SCORE  {0:000000}      BEST  {1:000000}", score, bestScore);
-        if (gameOverPanel != null) gameOverPanel.SetActive(true);
+        if (m_finalText != null) m_finalText.SetText("SCORE  {0:000000}      BEST  {1:000000}", _score, _bestScore);
+        if (m_gameOverPanel != null) m_gameOverPanel.SetActive(true);
     }
 
     public void Retry()
     {
-        retryAction?.Invoke();
+        m_retryAction?.Invoke();
     }
 
     public void ReturnToTitle()
     {
-        titleAction?.Invoke();
+        m_titleAction?.Invoke();
     }
 }
